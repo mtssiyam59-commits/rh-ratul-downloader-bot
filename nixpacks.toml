@@ -3,7 +3,7 @@ nixPkgs = ["nodejs_20", "gcc", "python313"]
 
 [phases.install]
 cmds = [
-    "ln -sf /root/.nix-profile/bin/node /usr/local/bin/node",
+    "ln -sf $(which node) /usr/local/bin/node",
     "python3.13 -m venv /opt/venv",
     ". /opt/venv/bin/activate && pip install -r requirements.txt"
 ]
