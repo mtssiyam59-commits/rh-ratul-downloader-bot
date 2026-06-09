@@ -13,6 +13,7 @@ API_HASH        = os.environ.get("API_HASH")
 STORAGE_CHANNEL = os.environ.get("STORAGE_CHANNEL", "@rh_ratul_storage")
 
 DOWNLOAD_DIR    = "./downloads"
+COOKIES_FILE    = "cookies.txt"
 CREDIT          = "👨‍💻 Developer : RH .RATUL"
 
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
@@ -27,7 +28,7 @@ async def get_pyro_client():
         await pyro_app.start()
     return pyro_app
 
-# ====================== DOWNLOAD WITH OAUTH ======================
+# ====================== DOWNLOAD FUNCTION ======================
 def download_video(url, output_path):
     ydl_opts = {
         "format": "bv*[height<=480]+ba/b[height<=480]/18/best",
@@ -37,16 +38,20 @@ def download_video(url, output_path):
         "quiet": True,
         "no_warnings": True,
         "geo_bypass": True,
-        "retries": 10,
-        "fragment_retries": 10,
-        # OAuth2 Authentication
-        "username": "oauth2",
+        "retries": 5,
+        "fragment_retries": 5,
+        "cookiefile": COOKIES_FILE if os.path.exists(COOKIES_FILE) else None,
         "extractor_args": {
             "youtube": {
                 "player_client": ["android", "web", "ios", "android_embedded", "web_embedded"],
                 "skip": ["dash", "hls"]
             }
         },
+        "sleep_interval": 5,
+        "max_sleep_interval": 30,
+        "http_headers": {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
+        }
     }
     
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -56,6 +61,7 @@ def download_video(url, output_path):
             filename = os.path.splitext(filename)[0] + ".mp4"
         return filename, info
 
+# ====================== REST OF THE CODE ======================
 def cleanup(*paths):
     for p in paths:
         try:
@@ -117,12 +123,12 @@ async def download_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             disable_web_page_preview=True
         )
     except Exception as e:
-        await status.edit_text(f"❌ এরর: `{str(e)[:300]}`", parse_mode="Markdown")
+        await status.edit_text(f"❌ এরর: `{str(e)[:400]}`", parse_mode="Markdown")
     finally:
         cleanup(raw_path)
 
 def main():
-    print("🚀 Bot চালু হয়েছে...")
+    print("🚀 RH Ratul Downloader Bot চালু হয়েছে...")
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler((filters.TEXT | filters.CAPTION) & ~filters.COMMAND, download_handler))
