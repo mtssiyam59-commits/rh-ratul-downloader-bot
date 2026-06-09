@@ -11,6 +11,7 @@ STORAGE_CHANNEL = "@rh_ratul_storage"
 API_ID          = int(os.environ.get("API_ID"))
 API_HASH        = os.environ.get("API_HASH")
 DOWNLOAD_DIR    = "./downloads"
+COOKIES_FILE    = "cookies.txt"
 CREDIT          = "👨‍💻 Developer : RH .RATUL"
 FFMPEG          = imageio_ffmpeg.get_ffmpeg_exe()
 
@@ -27,9 +28,10 @@ def download_video(url, output_path):
         "no_warnings"        : True,
         "extractor_args"     : {
             "youtube": {
-                "player_client": ["android"],
+                "player_client": ["web", "mweb"],
             }
         },
+        "cookiefile"       : COOKIES_FILE,
         "retries"          : 5,
         "fragment_retries" : 5,
     }
