@@ -7,11 +7,10 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from pyrogram import Client
 
 TELEGRAM_TOKEN  = os.environ.get("TELEGRAM_TOKEN")
-STORAGE_CHANNEL = "@rh_ratul_storage"
+STORAGE_CHANNEL = os.environ.get("STORAGE_CHANNEL", "@rh_ratul_storage")
 API_ID          = int(os.environ.get("API_ID"))
 API_HASH        = os.environ.get("API_HASH")
 DOWNLOAD_DIR    = "./downloads"
-COOKIES_FILE    = "cookies.txt"
 CREDIT          = "👨‍💻 Developer : RH .RATUL"
 FFMPEG          = imageio_ffmpeg.get_ffmpeg_exe()
 
@@ -19,11 +18,6 @@ os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 
 def download_video(url, output_path):
-    # Node.js path fix
-    import subprocess
-    subprocess.run(['ln', '-sf', '/root/.nix-profile/bin/node', '/usr/bin/node'], capture_output=True)
-    os.environ['PATH'] = '/usr/bin:' + os.environ.get('PATH', '')
-    
     ydl_opts = {
         "format"             : "18/best[height<=360]/best",
         "outtmpl"            : output_path,
@@ -31,12 +25,13 @@ def download_video(url, output_path):
         "ffmpeg_location"    : FFMPEG,
         "quiet"              : True,
         "no_warnings"        : True,
+        "geo_bypass"         : True,
+        "geo_bypass_country" : "US",
         "extractor_args"     : {
             "youtube": {
-                "player_client": ["web", "mweb"],
+                "player_client": ["android", "android_vr", "web", "mweb"],
             }
         },
-        "cookiefile"       : COOKIES_FILE,
         "retries"          : 5,
         "fragment_retries" : 5,
     }
