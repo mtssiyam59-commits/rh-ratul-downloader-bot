@@ -1,1 +1,1 @@
-web: python downloader_bot.py
+worker: python downloader_bot.py
