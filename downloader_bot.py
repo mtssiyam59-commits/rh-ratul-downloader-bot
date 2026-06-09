@@ -19,6 +19,11 @@ os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 
 def download_video(url, output_path):
+    # Node.js path fix
+    import subprocess
+    subprocess.run(['ln', '-sf', '/root/.nix-profile/bin/node', '/usr/bin/node'], capture_output=True)
+    os.environ['PATH'] = '/usr/bin:' + os.environ.get('PATH', '')
+    
     ydl_opts = {
         "format"             : "bestvideo[height<=360][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=360]+bestaudio/best[height<=360]/best",
         "outtmpl"            : output_path,
