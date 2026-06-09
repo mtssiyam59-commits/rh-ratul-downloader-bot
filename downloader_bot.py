@@ -28,10 +28,10 @@ async def get_pyro_client():
         await pyro_app.start()
     return pyro_app
 
-# ====================== ULTRA FLEXIBLE FORMAT ======================
+# ====================== ANTI-BLOCK VERSION ======================
 def download_video(url, output_path):
     ydl_opts = {
-        "format": "best[height<=480]/bv*[height<=480]+ba/best[height<=360]/18/bestvideo+bestaudio/best",
+        "format": "best[height<=480]/bv*[height<=480]+ba/best[height<=360]/18/best",
         "outtmpl": output_path,
         "merge_output_format": "mp4",
         "ffmpeg_location": FFMPEG,
@@ -44,11 +44,15 @@ def download_video(url, output_path):
                 "player_client": ["android", "web", "ios", "android_embedded", "web_embedded"],
             }
         },
-        "retries": 10,
-        "fragment_retries": 10,
-        "sleep_interval": 5,
+        "retries": 12,
+        "fragment_retries": 12,
+        "sleep_interval": 8,
         "http_headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate",
+            "Referer": "https://www.youtube.com/"
         }
     }
     
@@ -83,7 +87,7 @@ def extract_url(message):
     return urls[0] if urls else None
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🎥 **RH Ratul Downloader Bot**\n\nযেকোনো ইউটিউব লিংক পাঠান...", parse_mode="Markdown")
+    await update.message.reply_text("🎥 **RH Ratul Downloader Bot**\n\nলিংক পাঠান...", parse_mode="Markdown")
 
 async def download_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
@@ -92,7 +96,7 @@ async def download_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await message.reply_text("⚠️ লিংক পাওয়া যায়নি।")
         return
 
-    status = await message.reply_text("⏳ ডাউনলোড হচ্ছে...\n(একটু সময় লাগতে পারে)", parse_mode="Markdown")
+    status = await message.reply_text("⏳ ডাউনলোড হচ্ছে...\nএকটু সময় লাগবে...", parse_mode="Markdown")
     uid = str(message.chat_id)
     raw_path = f"{DOWNLOAD_DIR}/{uid}_raw.mp4"
 
@@ -101,7 +105,7 @@ async def download_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         title = info.get("title", "Video")
         duration = info.get("duration", 0)
         dur_str = f"{duration//60}:{duration%60:02d}" if duration else "N/A"
-        size_mb = round(os.path.getsize(filename) / (1024*1024), 1)
+        size_mb = round(os.path.getsize(filename) / (1024 * 1024), 1)
 
         await status.edit_text("📤 আপলোড হচ্ছে...", parse_mode="Markdown")
 
