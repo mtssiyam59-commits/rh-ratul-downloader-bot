@@ -1,5 +1,6 @@
-python-telegram-bot==21.9
 yt-dlp
+yt-dlp-youtube-oauth2
+python-telegram-bot
+pyrogram
+tgcrypto
 imageio-ffmpeg
-pyrogram==2.0.106
-TgCrypto
