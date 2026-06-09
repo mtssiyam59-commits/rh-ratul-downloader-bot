@@ -22,23 +22,17 @@ FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
 # Global Pyrogram Client
 pyro_app = None
 
-# ====================== PYROGRAM CLIENT ======================
 async def get_pyro_client():
     global pyro_app
     if pyro_app is None or not pyro_app.is_connected:
-        pyro_app = Client(
-            "rh_ratul_session",
-            api_id=API_ID,
-            api_hash=API_HASH,
-            bot_token=TELEGRAM_TOKEN,
-        )
+        pyro_app = Client("rh_ratul_session", api_id=API_ID, api_hash=API_HASH, bot_token=TELEGRAM_TOKEN)
         await pyro_app.start()
     return pyro_app
 
-# ====================== DOWNLOAD FUNCTION ======================
+# ====================== IMPROVED DOWNLOAD ======================
 def download_video(url, output_path):
     ydl_opts = {
-        "format": "bv*[height<=480]+ba/best[height<=480]/18/best",  # 480p বা 360p
+        "format": "bv*[height<=480]+ba/bv*+ba/best[height<=480]/18/best",  
         "outtmpl": output_path,
         "merge_output_format": "mp4",
         "ffmpeg_location": FFMPEG,
@@ -48,26 +42,25 @@ def download_video(url, output_path):
         "cookiefile": COOKIES_FILE if os.path.exists(COOKIES_FILE) else None,
         "extractor_args": {
             "youtube": {
-                "player_client": ["android", "web", "ios", "android_embedded"],
+                "player_client": ["android", "web", "ios", "android_embedded", "web_embedded"],
                 "skip": ["dash", "hls"]
             }
         },
-        "retries": 5,
-        "fragment_retries": 5,
-        "sleep_interval": 3,
+        "retries": 10,
+        "fragment_retries": 10,
+        "sleep_interval": 5,
+        "max_sleep_interval": 30,
     }
     
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         filename = ydl.prepare_filename(info)
         
-        # Ensure .mp4 extension
         if not filename.endswith(".mp4"):
             filename = os.path.splitext(filename)[0] + ".mp4"
             
         return filename, info
 
-# ====================== CLEANUP ======================
 def cleanup(*paths):
     for p in paths:
         try:
@@ -76,45 +69,38 @@ def cleanup(*paths):
         except:
             pass
 
-# ====================== URL EXTRACT ======================
 def extract_url(message):
     if not message:
         return None
     text = message.text or message.caption or ""
-    
-    # Regex for URLs
     urls = re.findall(r'https?://[^\s\)]+', text)
     
-    # Check message entities
     entities = message.entities or message.caption_entities or []
     for entity in entities:
         if entity.type == "text_link":
             urls.append(entity.url)
         elif entity.type == "url":
-            urls.append(text[entity.offset:entity.offset + entity.length])
+            urls.append(text[entity.offset : entity.offset + entity.length])
     
-    # Prefer YouTube links
     for u in urls:
         if "youtube.com" in u or "youtu.be" in u:
             return u
     return urls[0] if urls else None
 
-# ====================== START COMMAND ======================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🎥 **RH Ratul Video Downloader Bot**\n\n"
-        "যেকোনো ইউটিউব লিংক পাঠান, আমি ডাউনলোড করে দিবো।\n\n"
+        "🎥 **RH Ratul Video Downloader**\n\n"
+        "যেকোনো ইউটিউব লিংক পাঠান।\n\n"
         f"{CREDIT}",
         parse_mode="Markdown"
     )
 
-# ====================== MAIN HANDLER ======================
 async def download_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
     url = extract_url(message)
     
     if not url:
-        await message.reply_text("⚠️ কোনো ভিডিও লিংক পাওয়া যায়নি।")
+        await message.reply_text("⚠️ কোনো লিংক পাওয়া যায়নি।")
         return
 
     status_msg = await message.reply_text("⏳ **ডাউনলোড শুরু হচ্ছে...**", parse_mode="Markdown")
@@ -125,52 +111,46 @@ async def download_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         filename, info = download_video(url, raw_path)
         
-        title = info.get("title", "Untitled Video")
+        title = info.get("title", "Untitled")
         duration = info.get("duration", 0)
         dur_str = f"{duration//60}:{duration%60:02d}"
         size_mb = os.path.getsize(filename) / (1024 * 1024)
 
-        await status_msg.edit_text("📤 **স্টোরেজ চ্যানেলে আপলোড হচ্ছে...**", parse_mode="Markdown")
+        await status_msg.edit_text("📤 **আপলোড হচ্ছে...**", parse_mode="Markdown")
 
         pyro = await get_pyro_client()
         
         sent = await pyro.send_video(
             chat_id=STORAGE_CHANNEL,
             video=filename,
-            caption=f"🎬 **{title}**\n⏱️ {dur_str} | 📺 480p\n📦 {size_mb:.1f} MB\n\n{CREDIT}",
+            caption=f"🎬 **{title}**\n⏱️ {dur_str} | 📺 ~480p\n📦 {size_mb:.1f} MB\n\n{CREDIT}",
             supports_streaming=True,
         )
 
         video_link = f"https://t.me/{STORAGE_CHANNEL.strip('@')}/{sent.id}"
 
         await status_msg.edit_text(
-            f"✅ **ডাউনলোড সম্পন্ন হয়েছে!**\n"
+            f"✅ **সফল হয়েছে!**\n"
             f"━━━━━━━━━━━━━━━━━━\n"
             f"🎬 {title}\n"
-            f"⏱️ Duration : {dur_str}\n"
-            f"📺 Quality  : 480p\n"
-            f"📦 Size     : {size_mb:.1f} MB\n"
+            f"⏱️ {dur_str} | 📺 ~480p\n"
+            f"📦 {size_mb:.1f} MB\n"
             f"━━━━━━━━━━━━━━━━━━\n"
-            f"[▶️ ভিডিও দেখুন / ডাউনলোড করুন]({video_link})\n\n"
-            f"{CREDIT}",
+            f"[▶️ দেখুন / ডাউনলোড করুন]({video_link})\n\n{CREDIT}",
             parse_mode="Markdown",
             disable_web_page_preview=True
         )
 
     except Exception as e:
-        error_text = str(e)[:400]
-        await status_msg.edit_text(f"❌ **ডাউনলোড ব্যর্থ হয়েছে**\n\n`{error_text}`", parse_mode="Markdown")
+        await status_msg.edit_text(f"❌ **ব্যর্থ**\n\n`{str(e)[:350]}`", parse_mode="Markdown")
     finally:
         cleanup(raw_path)
 
-# ====================== MAIN ======================
 def main():
     print("🚀 RH Ratul Downloader Bot চালু হয়েছে...")
     app = Application.builder().token(TELEGRAM_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler((filters.TEXT | filters.CAPTION) & ~filters.COMMAND, download_handler))
-
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
