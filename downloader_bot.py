@@ -28,40 +28,37 @@ async def get_pyro_client():
         await pyro_app.start()
     return pyro_app
 
-# ====================== DOWNLOAD FUNCTION ======================
+# ====================== BEST FORMAT FIX ======================
 def download_video(url, output_path):
     ydl_opts = {
-        "format": "bv*[height<=480]+ba/b[height<=480]/18/best",
+        "format": "bestvideo[height<=480]+bestaudio/best[height<=480]/18/bestvideo+bestaudio/best",
         "outtmpl": output_path,
         "merge_output_format": "mp4",
         "ffmpeg_location": FFMPEG,
         "quiet": True,
         "no_warnings": True,
         "geo_bypass": True,
-        "retries": 5,
-        "fragment_retries": 5,
         "cookiefile": COOKIES_FILE if os.path.exists(COOKIES_FILE) else None,
         "extractor_args": {
             "youtube": {
                 "player_client": ["android", "web", "ios", "android_embedded", "web_embedded"],
-                "skip": ["dash", "hls"]
             }
         },
-        "sleep_interval": 5,
-        "max_sleep_interval": 30,
+        "retries": 10,
+        "fragment_retries": 10,
+        "sleep_interval": 6,
         "http_headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
         }
     }
     
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         filename = ydl.prepare_filename(info)
-        if not filename.endswith(".mp4"):
+        if not filename.lower().endswith(".mp4"):
             filename = os.path.splitext(filename)[0] + ".mp4"
         return filename, info
 
-# ====================== REST OF THE CODE ======================
 def cleanup(*paths):
     for p in paths:
         try:
@@ -76,26 +73,25 @@ def extract_url(message):
     urls = re.findall(r'https?://[^\s\)]+', text)
     entities = message.entities or message.caption_entities or []
     for entity in entities:
-        if entity.type == "text_link":
-            urls.append(entity.url)
-        elif entity.type == "url":
-            urls.append(text[entity.offset:entity.offset + entity.length])
+        if entity.type in ["text_link", "url"]:
+            url = entity.url if hasattr(entity, 'url') else text[entity.offset:entity.offset + entity.length]
+            urls.append(url)
     for u in urls:
         if "youtube.com" in u or "youtu.be" in u:
             return u
     return urls[0] if urls else None
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🎥 **RH Ratul Downloader Bot**\n\nলিংক পাঠান...", parse_mode="Markdown")
+    await update.message.reply_text("🎥 **RH Ratul Downloader Bot**\n\nযেকোনো ইউটিউব লিংক পাঠান...", parse_mode="Markdown")
 
 async def download_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
     url = extract_url(message)
     if not url:
-        await message.reply_text("⚠️ লিংক পাওয়া যায়নি।")
+        await message.reply_text("⚠️ কোনো লিংক পাওয়া যায়নি।")
         return
 
-    status = await message.reply_text("⏳ ডাউনলোড হচ্ছে...", parse_mode="Markdown")
+    status = await message.reply_text("⏳ ডাউনলোড হচ্ছে...\nএকটু সময় লাগতে পারে।", parse_mode="Markdown")
     uid = str(message.chat_id)
     raw_path = f"{DOWNLOAD_DIR}/{uid}_raw.mp4"
 
@@ -103,27 +99,28 @@ async def download_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         filename, info = download_video(url, raw_path)
         title = info.get("title", "Video")
         duration = info.get("duration", 0)
-        dur_str = f"{duration//60}:{duration%60:02d}"
-        size_mb = os.path.getsize(filename) / (1024*1024)
+        dur_str = f"{duration//60}:{duration%60:02d}" if duration else "N/A"
+        size_mb = round(os.path.getsize(filename) / (1024*1024), 1)
 
-        await status.edit_text("📤 আপলোড হচ্ছে...", parse_mode="Markdown")
+        await status.edit_text("📤 স্টোরেজে আপলোড হচ্ছে...", parse_mode="Markdown")
 
         pyro = await get_pyro_client()
         sent = await pyro.send_video(
             chat_id=STORAGE_CHANNEL,
             video=filename,
-            caption=f"🎬 {title}\n⏱️ {dur_str} | ~480p\n📦 {size_mb:.1f} MB\n\n{CREDIT}",
+            caption=f"🎬 {title}\n⏱️ {dur_str} | ~480p\n📦 {size_mb} MB\n\n{CREDIT}",
             supports_streaming=True
         )
 
         link = f"https://t.me/{STORAGE_CHANNEL.strip('@')}/{sent.id}"
         await status.edit_text(
-            f"✅ **সফল!**\n\n🎬 {title}\n⏱️ {dur_str}\n[▶️ দেখুন]({link})\n\n{CREDIT}",
+            f"✅ **ডাউনলোড সম্পন্ন!**\n\n🎬 {title}\n⏱️ {dur_str}\n[▶️ ভিডিও দেখুন]({link})\n\n{CREDIT}",
             parse_mode="Markdown",
             disable_web_page_preview=True
         )
     except Exception as e:
-        await status.edit_text(f"❌ এরর: `{str(e)[:400]}`", parse_mode="Markdown")
+        error_msg = str(e)[:350]
+        await status.edit_text(f"❌ **এরর**\n\n`{error_msg}`", parse_mode="Markdown")
     finally:
         cleanup(raw_path)
 
