@@ -11,6 +11,7 @@ STORAGE_CHANNEL = os.environ.get("STORAGE_CHANNEL", "@rh_ratul_storage")
 API_ID          = int(os.environ.get("API_ID"))
 API_HASH        = os.environ.get("API_HASH")
 DOWNLOAD_DIR    = "./downloads"
+COOKIES_FILE    = "cookies.txt"
 CREDIT          = "👨‍💻 Developer : RH .RATUL"
 FFMPEG          = imageio_ffmpeg.get_ffmpeg_exe()
 
@@ -19,21 +20,25 @@ os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 def download_video(url, output_path):
     ydl_opts = {
-        "format"             : "18/best[height<=360]/best",
-        "outtmpl"            : output_path,
-        "merge_output_format": "mp4",
-        "ffmpeg_location"    : FFMPEG,
-        "quiet"              : True,
-        "no_warnings"        : True,
-        "geo_bypass"         : True,
-        "geo_bypass_country" : "US",
-        "extractor_args"     : {
+        "format"                 : "18/best[height<=360]/best",
+        "outtmpl"                : output_path,
+        "merge_output_format"    : "mp4",
+        "ffmpeg_location"        : FFMPEG,
+        "quiet"                  : True,
+        "no_warnings"            : True,
+        "geo_bypass"             : True,
+        "geo_bypass_country"     : "US",
+        "cookiefile"             : COOKIES_FILE if os.path.exists(COOKIES_FILE) else None,
+        "extractor_args"         : {
             "youtube": {
                 "player_client": ["android", "android_vr", "web", "mweb"],
             }
         },
-        "retries"          : 5,
-        "fragment_retries" : 5,
+        "sleep_interval"         : 2,
+        "max_sleep_interval"     : 4,
+        "sleep_interval_requests": 1,
+        "retries"                : 5,
+        "fragment_retries"       : 5,
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info  = ydl.extract_info(url, download=True)
