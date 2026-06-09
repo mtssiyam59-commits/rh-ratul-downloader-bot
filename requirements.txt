@@ -1,0 +1,5 @@
+python-telegram-bot==21.9
+yt-dlp
+imageio-ffmpeg
+pyrogram==2.0.106
+TgCrypto
