@@ -1,9 +1,8 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "gcc", "python313"]
+aptPkgs = ["ffmpeg"]
 
-[phases.install]
-cmds = [
-    "ln -sf $(which node) /usr/local/bin/node",
-    "python3.13 -m venv /opt/venv",
-    ". /opt/venv/bin/activate && pip install -r requirements.txt"
-]
+[phases.build]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "python downloader_bot.py"
