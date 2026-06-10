@@ -32,7 +32,7 @@ async def get_pyro_client():
 # ====================== ADVANCED DOWNLOAD ======================
 def download_video(url, output_path):
     ydl_opts = {
-        "format": "best[height<=480]/bv*[height<=480]+ba/best[height<=360]/18/bestvideo+bestaudio/best",
+        "format": ""format": "best",
         "outtmpl": output_path,
         "merge_output_format": "mp4",
         "ffmpeg_location": FFMPEG,
