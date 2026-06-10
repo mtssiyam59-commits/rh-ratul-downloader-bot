@@ -1,5 +1,6 @@
 import os
 import re
+import asyncio
 import yt_dlp
 import imageio_ffmpeg
 from telegram import Update
@@ -28,10 +29,10 @@ async def get_pyro_client():
         await pyro_app.start()
     return pyro_app
 
-# ====================== ANTI-BLOCK VERSION ======================
+# ====================== ADVANCED DOWNLOAD ======================
 def download_video(url, output_path):
     ydl_opts = {
-        "format": "best[height<=480]/bv*[height<=480]+ba/best[height<=360]/18/best",
+        "format": "best[height<=480]/bv*[height<=480]+ba/best[height<=360]/18/bestvideo+bestaudio/best",
         "outtmpl": output_path,
         "merge_output_format": "mp4",
         "ffmpeg_location": FFMPEG,
@@ -44,15 +45,11 @@ def download_video(url, output_path):
                 "player_client": ["android", "web", "ios", "android_embedded", "web_embedded"],
             }
         },
-        "retries": 12,
-        "fragment_retries": 12,
-        "sleep_interval": 8,
+        "retries": 15,
+        "fragment_retries": 15,
+        "sleep_interval": 10,
         "http_headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Encoding": "gzip, deflate",
-            "Referer": "https://www.youtube.com/"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
         }
     }
     
@@ -96,11 +93,15 @@ async def download_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await message.reply_text("⚠️ লিংক পাওয়া যায়নি।")
         return
 
-    status = await message.reply_text("⏳ ডাউনলোড হচ্ছে...\nএকটু সময় লাগবে...", parse_mode="Markdown")
+    status = await message.reply_text("⏳ ডাউনলোড হচ্ছে...\nদয়া করে অপেক্ষা করুন...", parse_mode="Markdown")
+    
     uid = str(message.chat_id)
     raw_path = f"{DOWNLOAD_DIR}/{uid}_raw.mp4"
 
     try:
+        # Small delay to avoid rate limit
+        await asyncio.sleep(3)
+        
         filename, info = download_video(url, raw_path)
         title = info.get("title", "Video")
         duration = info.get("duration", 0)
@@ -123,8 +124,12 @@ async def download_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown",
             disable_web_page_preview=True
         )
+
     except Exception as e:
-        await status.edit_text(f"❌ এরর:\n`{str(e)[:400]}`", parse_mode="Markdown")
+        error = str(e)[:400]
+        if "403" in error or "Sign in" in error:
+            error = "Cookie expired. Cookies আপডেট করুন।"
+        await status.edit_text(f"❌ এরর:\n`{error}`", parse_mode="Markdown")
     finally:
         cleanup(raw_path)
 
